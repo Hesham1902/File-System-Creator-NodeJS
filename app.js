@@ -30,30 +30,40 @@ const fs = require("fs/promises");
       await fs.rename(oldPath, newPath);
       await existingFileHandle.close();
       console.log(`The file ${oldPath} changed succesfully to ${newPath}`);
-    } catch (error) {
-      console.log("File doesn't exist");
-      return error;
+    } catch (e) {
+      if (e.code === "ENOENT") {
+        console.log(
+          "No file at this path to rename, or the destination doesn't exist"
+        );
+      } else {
+        console.log("An error occured");
+        console.log(e);
+      }
     }
   };
 
   const deleteFile = async (path) => {
     try {
-      const existingFileHandle = await fs.open(path, "r");
       await fs.unlink(path);
-      await existingFileHandle.close();
       console.log(`The file ${path} deleted succesfully`);
-    } catch (error) {
-      console.log("File doesn't exist");
-      return error;
+    } catch (e) {
+      if (e.code === "ENOENT") {
+        // file doesn't exist
+        console.log("File doesn't exist");
+      } else {
+        console.log("An error occured");
+        console.log(e);
+      }
     }
   };
+
   const addToFile = async (path, content) => {
     try {
       await fs.appendFile(path, content);
       console.log(`content added succesfully to ${path}`);
-    } catch (error) {
-      console.log(error);
-      return error;
+    } catch (e) {
+      console.log("An error occured");
+      console.log(e);
     }
   };
 
@@ -66,6 +76,7 @@ const fs = require("fs/promises");
   console.log(test);
   **/
 
+  // @ts-ignore
   commandFileHandler.on("change", async () => {
     console.log("File content changed");
 
@@ -116,9 +127,19 @@ const fs = require("fs/promises");
 
   // ..watcher
   const watcher = fs.watch("./commands.txt");
-  for await (let event of watcher) {
-    if (event.eventType === "change") {
-      commandFileHandler.emit("change");
-    }
+  let timeout;
+  // for await (let event of watcher) {
+  //   if (event.eventType === "change") {
+  //     // @ts-ignore
+  //     commandFileHandler.emit("change");
+  //   }
+  // }
+  for await (const event of watcher) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      console.log(event);
+      // @ts-ignore
+      commandFileHandler.emit(event.eventType);
+    }, 100); // Adjust timeout as needed but 100 ms should do it
   }
 })();
